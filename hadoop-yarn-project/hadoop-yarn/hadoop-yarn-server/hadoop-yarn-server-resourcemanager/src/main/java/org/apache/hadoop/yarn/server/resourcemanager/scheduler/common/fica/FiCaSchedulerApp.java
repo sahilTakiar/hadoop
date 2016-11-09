@@ -672,4 +672,20 @@ public class FiCaSchedulerApp extends SchedulerApplicationAttempt {
   public ReentrantReadWriteLock.WriteLock getWriteLock() {
     return this.writeLock;
   }
+
+  /*
+   * Overriding to appease findbugs
+   */
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
+
+  /*
+   * Overriding to appease findbugs
+   */
+  @Override
+  public boolean equals(Object o) {
+    return super.equals(o);
+  }
 }
