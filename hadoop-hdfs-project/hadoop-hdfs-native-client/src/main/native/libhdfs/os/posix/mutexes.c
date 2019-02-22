@@ -21,7 +21,6 @@
 #include <pthread.h>
 #include <stdio.h>
 
-mutex hdfsHashMutex = PTHREAD_MUTEX_INITIALIZER;
 mutex jvmMutex;
 pthread_mutexattr_t jvmMutexAttr;
 

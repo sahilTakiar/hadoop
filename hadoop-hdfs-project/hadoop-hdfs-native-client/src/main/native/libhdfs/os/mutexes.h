@@ -30,9 +30,6 @@
 
 #include "platform.h"
 
-/** Mutex protecting the class reference hash table. */
-extern mutex hdfsHashMutex;
-
 /** Mutex protecting singleton JVM instance. */
 extern mutex jvmMutex;
 
