@@ -17,6 +17,7 @@
  */
 
 #include "exception.h"
+#include "hdfs_classes.h"
 #include "jni_helper.h"
 #include "native_mini_dfs.h"
 #include "platform.h"
@@ -36,9 +37,7 @@
 
 #define MINIDFS_CLUSTER_BUILDER "org/apache/hadoop/hdfs/MiniDFSCluster$Builder"
 #define MINIDFS_CLUSTER "org/apache/hadoop/hdfs/MiniDFSCluster"
-#define HADOOP_CONF     "org/apache/hadoop/conf/Configuration"
 #define HADOOP_NAMENODE "org/apache/hadoop/hdfs/server/namenode/NameNode"
-#define JAVA_INETSOCKETADDRESS "java/net/InetSocketAddress"
 
 struct NativeMiniDfsCluster {
     /**
@@ -126,11 +125,6 @@ struct NativeMiniDfsCluster* nmdCreate(struct NativeMiniDfsConf *conf)
             "nmdCreate: new Configuration");
         goto error;
     }
-    if (jthr) {
-        printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
-                              "nmdCreate: Configuration::setBoolean");
-        goto error;
-    }
     // Disable 'minimum block size' -- it's annoying in tests.
     (*env)->DeleteLocalRef(env, jconfStr);
     jconfStr = NULL;
@@ -140,8 +134,9 @@ struct NativeMiniDfsCluster* nmdCreate(struct NativeMiniDfsConf *conf)
                               "nmdCreate: new String");
         goto error;
     }
-    jthr = invokeMethod(env, NULL, INSTANCE, cobj, HADOOP_CONF,
-                        "setLong", "(Ljava/lang/String;J)V", jconfStr, 0LL);
+    jthr = invokeMethodWithJclass(env, NULL, INSTANCE, cobj,
+            JC_Configuration, HADOOP_CONF, "setLong", "(Ljava/lang/String;J)V",
+            jconfStr, 0LL);
     if (jthr) {
         printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
                               "nmdCreate: Configuration::setLong");
@@ -319,7 +314,7 @@ int nmdGetNameNodeHttpAddress(const struct NativeMiniDfsCluster *cl,
 
     // Then get the http address (InetSocketAddress) of the NameNode
     jthr = invokeMethod(env, &jVal, INSTANCE, jNameNode, HADOOP_NAMENODE,
-                        "getHttpAddress", "()L" JAVA_INETSOCKETADDRESS ";");
+                        "getHttpAddress", "()L" JAVA_NET_ISA ";");
     if (jthr) {
         ret = printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
                                     "nmdGetNameNodeHttpAddress: "
@@ -329,7 +324,7 @@ int nmdGetNameNodeHttpAddress(const struct NativeMiniDfsCluster *cl,
     jAddress = jVal.l;
 
     jthr = invokeMethod(env, &jVal, INSTANCE, jAddress,
-                        JAVA_INETSOCKETADDRESS, "getPort", "()I");
+                        JAVA_NET_ISA, "getPort", "()I");
     if (jthr) {
         ret = printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
                                     "nmdGetNameNodeHttpAddress: "
@@ -338,7 +333,7 @@ int nmdGetNameNodeHttpAddress(const struct NativeMiniDfsCluster *cl,
     }
     *port = jVal.i;
 
-    jthr = invokeMethod(env, &jVal, INSTANCE, jAddress, JAVA_INETSOCKETADDRESS,
+    jthr = invokeMethod(env, &jVal, INSTANCE, jAddress, JAVA_NET_ISA,
                         "getHostName", "()Ljava/lang/String;");
     if (jthr) {
         ret = printExceptionAndFree(env, jthr, PRINT_EXC_ALL,

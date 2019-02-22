@@ -31,6 +31,7 @@ add_library(native_mini_dfs
     native_mini_dfs.c
     ../libhdfs/common/htable.c
     ../libhdfs/exception.c
+    ../libhdfs/hdfs_classes.c
     ../libhdfs/jni_helper.c
     ${OS_DIR}/mutexes.c
     ${OS_DIR}/thread_local_storage.c

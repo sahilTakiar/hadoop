@@ -35,6 +35,7 @@ hadoop_add_dual_library(hdfs
     exception.c
     jni_helper.c
     hdfs.c
+    hdfs_classes.c
     common/htable.c
     ${OS_DIR}/mutexes.c
     ${OS_DIR}/thread_local_storage.c

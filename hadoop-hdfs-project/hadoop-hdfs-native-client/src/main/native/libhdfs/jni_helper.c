@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include "hdfs_classes.h"
 #include "config.h"
 #include "exception.h"
 #include "jni_helper.h"
@@ -41,7 +42,6 @@ static struct htable *gClassRefHTable = NULL;
 #define JLONG         'J'
 #define JFLOAT        'F'
 #define JDOUBLE       'D'
-
 
 /**
  * MAX_HASH_TABLE_ELEM: The maximum no. of entries in the hashtable.
@@ -106,32 +106,27 @@ jthrowable newCStr(JNIEnv *env, jstring jstr, char **out)
     return NULL;
 }
 
-jthrowable invokeMethod(JNIEnv *env, jvalue *retval, MethType methType,
-                 jobject instObj, const char *className,
-                 const char *methName, const char *methSignature, ...)
+/**
+ * Does the work to actually execute a Java method. Takes in an existing jclass
+ * object and a va_list of arguments for the Java method to be invoked.
+ */
+static jthrowable invokeMethodWithJclassVargs(JNIEnv *env, jvalue *retval,
+        MethType methType, jobject instObj, jclass cls, const char *className,
+        const char *methName, const char *methSignature, va_list args)
 {
-    va_list args;
-    jclass cls;
     jmethodID mid;
     jthrowable jthr;
-    const char *str; 
+    const char *str;
     char returnType;
-    
-    jthr = validateMethodType(env, methType);
-    if (jthr)
-        return jthr;
-    jthr = globalClassReference(className, env, &cls);
-    if (jthr)
-        return jthr;
-    jthr = methodIdFromClass(className, methName, methSignature, 
-                            methType, env, &mid);
+
+    jthr = methodIdFromClass(cls, className, methName, methSignature, methType,
+                             env, &mid);
     if (jthr)
         return jthr;
     str = methSignature;
     while (*str != ')') str++;
     str++;
     returnType = *str;
-    va_start(args, methSignature);
     if (returnType == JOBJECT || returnType == JARRAYOBJECT) {
         jobject jobj = NULL;
         if (methType == STATIC) {
@@ -190,7 +185,6 @@ jthrowable invokeMethod(JNIEnv *env, jvalue *retval, MethType methType,
         }
         retval->i = ji;
     }
-    va_end(args);
 
     jthr = (*env)->ExceptionOccurred(env);
     if (jthr) {
@@ -200,43 +194,99 @@ jthrowable invokeMethod(JNIEnv *env, jvalue *retval, MethType methType,
     return NULL;
 }
 
-jthrowable constructNewObjectOfClass(JNIEnv *env, jobject *out, const char *className, 
-                                  const char *ctorSignature, ...)
+jthrowable invokeMethod(JNIEnv *env, jvalue *retval, MethType methType,
+        jobject instObj, const char *className, const char *methName,
+        const char *methSignature, ...)
 {
-    va_list args;
     jclass cls;
-    jmethodID mid; 
-    jobject jobj;
     jthrowable jthr;
 
+    va_list args;
+    va_start(args, methSignature);
+
+    jthr = validateMethodType(env, methType);
+    if (jthr)
+        return jthr;
     jthr = globalClassReference(className, env, &cls);
     if (jthr)
         return jthr;
-    jthr = methodIdFromClass(className, "<init>", ctorSignature, 
-                            INSTANCE, env, &mid);
+
+    jthr = invokeMethodWithJclassVargs(env, retval, methType, instObj, cls,
+            className, methName, methSignature, args);
+
+    va_end(args);
+    return jthr;
+}
+
+jthrowable invokeMethodWithJclass(JNIEnv *env, jvalue *retval,
+        MethType methType, jobject instObj, jclass cls, const char *className,
+        const char *methName, const char *methSignature, ...)
+{
+    jthrowable jthr;
+
+    va_list args;
+    va_start(args, methSignature);
+
+    jthr = invokeMethodWithJclassVargs(env, retval, methType, instObj, cls,
+            className, methName, methSignature, args);
+
+    va_end(args);
+    return jthr;
+}
+
+static jthrowable constructNewObjectOfClassWithJclassVargs(JNIEnv *env, jobject *out, jclass cls,
+        const char *className, const char *ctorSignature, va_list args) {
+    jmethodID mid;
+    jobject jobj;
+    jthrowable jthr;
+
+    jthr = methodIdFromClass(cls, className, "<init>", ctorSignature, INSTANCE,
+            env, &mid);
     if (jthr)
         return jthr;
-    va_start(args, ctorSignature);
     jobj = (*env)->NewObjectV(env, cls, mid, args);
-    va_end(args);
     if (!jobj)
         return getPendingExceptionAndClear(env);
     *out = jobj;
     return NULL;
 }
 
-
-jthrowable methodIdFromClass(const char *className, const char *methName, 
-                            const char *methSignature, MethType methType, 
-                            JNIEnv *env, jmethodID *out)
+jthrowable constructNewObjectOfClass(JNIEnv *env, jobject *out,
+        const char *className, const char *ctorSignature, ...)
 {
+    va_list args;
     jclass cls;
-    jthrowable jthr;
-    jmethodID mid = 0;
+    jthrowable jthr = NULL;
 
     jthr = globalClassReference(className, env, &cls);
     if (jthr)
         return jthr;
+    va_start(args, ctorSignature);
+    jthr = constructNewObjectOfClassWithJclassVargs(env, out, cls, className,
+            ctorSignature, args);
+    va_end(args);
+    return jthr;
+}
+
+jthrowable constructNewObjectOfClassWithJclass(JNIEnv *env, jobject *out, jclass cls,
+        const char *className, const char *ctorSignature, ...)
+{
+    jthrowable jthr = NULL;
+    va_list args;
+    va_start(args, ctorSignature);
+    jthr = constructNewObjectOfClassWithJclassVargs(env, out, cls, className,
+            ctorSignature, args);
+    va_end(args);
+    return jthr;
+}
+
+jthrowable methodIdFromClass(jclass cls, const char *className,
+        const char *methName, const char *methSignature, MethType methType,
+        JNIEnv *env, jmethodID *out)
+{
+    jthrowable jthr;
+    jmethodID mid = 0;
+
     jthr = validateMethodType(env, methType);
     if (jthr)
         return jthr;
@@ -357,6 +407,30 @@ done:
 }
 
 
+jthrowable getJclass(JNIEnv *env, const char *className,
+        jclass *cachedJclass) {
+    jthrowable jthr = NULL;
+    jclass tempLocalClassRef;
+    tempLocalClassRef = (*env)->FindClass(env, className);
+    if (!tempLocalClassRef) {
+        fprintf(stderr, "could not find class\n");
+        jthr = getPendingExceptionAndClear(env);
+        goto done;
+    }
+    *cachedJclass = (jclass) (*env)->NewGlobalRef(env, tempLocalClassRef);
+    if (!*cachedJclass) {
+        fprintf(stderr, "could not make global ref\n");
+        jthr = getPendingExceptionAndClear(env);
+        goto done;
+    }
+done:
+    destroyLocalReference(env, tempLocalClassRef);
+    if (jthr) {
+        return jthr;
+    }
+    return NULL;
+}
+
 /**
  * Get the global JNI environemnt.
  *
@@ -426,7 +500,7 @@ static JNIEnv* getGlobalJNIEnv(void)
         }
         options[0].optionString = optHadoopClassPath;
         hadoopJvmArgs = getenv("LIBHDFS_OPTS");
-	if (hadoopJvmArgs != NULL)  {
+	    if (hadoopJvmArgs != NULL)  {
           hadoopJvmArgs = strdup(hadoopJvmArgs);
           for (noArgs = 1, str = hadoopJvmArgs; ; noArgs++, str = NULL) {
             token = strtok_r(str, jvmArgDelims, &savePtr);
@@ -456,14 +530,86 @@ static JNIEnv* getGlobalJNIEnv(void)
                     "with error: %d\n", rv);
             return NULL;
         }
-        jthr = invokeMethod(env, NULL, STATIC, NULL,
-                         "org/apache/hadoop/fs/FileSystem",
-                         "loadFileSystems", "()V");
+
+        const char *getJclassFailureMsg = "Failed to get class %s";
+
+        jthr = getJclass(env, HADOOP_CONF, &JC_Configuration);
         if (jthr) {
-            printExceptionAndFree(env, jthr, PRINT_EXC_ALL, "loadFileSystems");
+            printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
+                                  getJclassFailureMsg, HADOOP_CONF);
+            return NULL;
         }
-    }
-    else {
+
+        jthr = getJclass(env, HADOOP_PATH, &JC_Path);
+        if (jthr) {
+            printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
+                                  getJclassFailureMsg, HADOOP_PATH);
+            return NULL;
+        }
+
+        jthr = getJclass(env, HADOOP_FS, &JC_FileSystem);
+        if (jthr) {
+            printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
+                                  getJclassFailureMsg, HADOOP_FS);
+            return NULL;
+        }
+
+        jthr = getJclass(env, HADOOP_FSDISTRM, &JC_FSDataInputStream);
+        if (jthr) {
+            printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
+                                  getJclassFailureMsg, HADOOP_FSDISTRM);
+            return NULL;
+        }
+
+        jthr = getJclass(env, HADOOP_FSDOSTRM, &JC_FSDataOutputStream);
+        if (jthr) {
+            printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
+                                  getJclassFailureMsg, HADOOP_FSDOSTRM);
+            return NULL;
+        }
+
+        jthr = getJclass(env, HADOOP_FILESTAT, &JC_FileStatus);
+        if (jthr) {
+            printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
+                                  getJclassFailureMsg, HADOOP_FILESTAT);
+            return NULL;
+        }
+
+        jthr = getJclass(env, HADOOP_FSPERM, &JC_FsPermission);
+        if (jthr) {
+            printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
+                                  getJclassFailureMsg, HADOOP_FSPERM);
+            return NULL;
+        }
+
+        jthr = getJclass(env, HADOOP_RSTAT, &JC_ReadStatistics);
+        if (jthr) {
+            printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
+                                  getJclassFailureMsg, HADOOP_RSTAT);
+            return NULL;
+        }
+
+        jthr = getJclass(env, HADOOP_HDISTRM, &JC_HdfsDataInputStream);
+        if (jthr) {
+            printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
+                                  getJclassFailureMsg, HADOOP_HDISTRM);
+            return NULL;
+        }
+
+        jthr = getJclass(env, JAVA_BYTEBUFFER, &JC_ByteBuffer);
+        if (jthr) {
+            printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
+                                  getJclassFailureMsg, JAVA_BYTEBUFFER);
+            return NULL;
+        }
+
+        jthr = invokeMethodWithJclass(env, NULL, STATIC, NULL, JC_FileSystem,
+                HADOOP_FS, "loadFileSystems", "()V");
+        if (jthr) {
+            printExceptionAndFree(env, jthr, PRINT_EXC_ALL, "FileSystem: loadFileSystems failed");
+            return NULL;
+        }
+    } else {
         //Attach this thread to the VM
         vm = vmBuf[0];
         rv = (*vm)->AttachCurrentThread(vm, (void*)&env, 0);
@@ -622,10 +768,9 @@ jthrowable hadoopConfSetStr(JNIEnv *env, jobject jConfiguration,
     jthr = newJavaStr(env, value, &jvalue);
     if (jthr)
         goto done;
-    jthr = invokeMethod(env, NULL, INSTANCE, jConfiguration,
-            "org/apache/hadoop/conf/Configuration", "set", 
-            "(Ljava/lang/String;Ljava/lang/String;)V",
-            jkey, jvalue);
+    jthr = invokeMethodWithJclass(env, NULL, INSTANCE, jConfiguration,
+            JC_Configuration, HADOOP_CONF, "set",
+            "(Ljava/lang/String;Ljava/lang/String;)V", jkey, jvalue);
     if (jthr)
         goto done;
 done:

@@ -28,7 +28,6 @@
 
 #define PATH_SEPARATOR ':'
 
-
 /** Denote the method we want to invoke as STATIC or INSTANCE */
 typedef enum {
     STATIC,
@@ -83,17 +82,25 @@ void destroyLocalReference(JNIEnv *env, jobject jObject);
    a valid exception reference, and the result stored at retval is undefined.
  */
 jthrowable invokeMethod(JNIEnv *env, jvalue *retval, MethType methType,
-                 jobject instObj, const char *className, const char *methName, 
-                 const char *methSignature, ...);
+        jobject instObj, const char *className, const char *methName,
+        const char *methSignature, ...);
 
-jthrowable constructNewObjectOfClass(JNIEnv *env, jobject *out, const char *className, 
-                                  const char *ctorSignature, ...);
+jthrowable invokeMethodWithJclass(JNIEnv *env, jvalue *retval,
+        MethType methType, jobject instObj, jclass cls, const char *className,
+        const char *methName, const char *methSignature, ...);
 
-jthrowable methodIdFromClass(const char *className, const char *methName, 
-                            const char *methSignature, MethType methType, 
-                            JNIEnv *env, jmethodID *out);
+jthrowable constructNewObjectOfClass(JNIEnv *env, jobject *out,
+        const char *className, const char *ctorSignature, ...);
 
-jthrowable globalClassReference(const char *className, JNIEnv *env, jclass *out);
+jthrowable constructNewObjectOfClassWithJclass(JNIEnv *env, jobject *out, jclass cls,
+        const char *className, const char *ctorSignature, ...);
+
+jthrowable methodIdFromClass(jclass cls, const char *className,
+        const char *methName, const char *methSignature, MethType methType,
+        JNIEnv *env, jmethodID *out);
+
+jthrowable globalClassReference(const char *className, JNIEnv *env,
+        jclass *out);
 
 /** classNameOfObject: Get an object's class name.
  * @param jobj: The object.
@@ -187,6 +194,9 @@ jthrowable hadoopConfSetStr(JNIEnv *env, jobject jConfiguration,
  */
 jthrowable fetchEnumInstance(JNIEnv *env, const char *className,
                              const char *valueName, jobject *out);
+
+jthrowable getJclass(JNIEnv *env, const char *className,
+        jclass *cachedJclass);
 
 #endif /*LIBHDFS_JNI_HELPER_H*/
 
