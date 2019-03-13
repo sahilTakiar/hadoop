@@ -23,6 +23,7 @@
 #include <fcntl.h> /* for O_RDONLY, O_WRONLY */
 #include <stdint.h> /* for uint64_t, etc. */
 #include <time.h> /* for time_t */
+#include <jni.h>
 
 /*
  * Support export of DLL symbols during libhdfs build, and import of DLL symbols
@@ -598,6 +599,10 @@ extern  "C" {
      */
     LIBHDFS_EXTERNAL
     tSize hdfsRead(hdfsFS fs, hdfsFile file, void* buffer, tSize length);
+
+    LIBHDFS_EXTERNAL
+    tSize hdfsReadWithArray(hdfsFS fs, hdfsFile file, void* buffer,
+                            tSize length, jbyteArray jbarray);
 
     /** 
      * hdfsPread - Positional read of data from an open file.
