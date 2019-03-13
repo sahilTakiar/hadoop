@@ -1399,6 +1399,65 @@ static int readPrepare(JNIEnv* env, hdfsFS fs, hdfsFile f,
     return 0;
 }
 
+
+tSize hdfsReadWithArray(hdfsFS fs, hdfsFile f, void* buffer,
+                        tSize length, jbyteArray jbarray) {
+    jobject jInputStream;
+    jvalue jVal;
+    jthrowable jthr;
+    JNIEnv* env;
+
+    if (length == 0) {
+        return 0;
+    } else if (length < 0) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    // JAVA EQUIVALENT:
+    //  byte [] bR = new byte[length];
+    //  fis.read(bR);
+
+    //Get the JNIEnv* corresponding to current thread
+    env = getJNIEnv();
+    if (env == NULL) {
+        errno = EINTERNAL;
+        return -1;
+    }
+
+    //Parameters
+    if (readPrepare(env, fs, f, &jInputStream) == -1) {
+        return -1;
+    }
+
+    jthr = invokeMethod(env, &jVal, INSTANCE, jInputStream, HADOOP_ISTRM,
+                        "read", "([B)I", jbarray);
+    if (jthr) {
+        errno = printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
+                                      "hdfsRead: FSDataInputStream#read");
+        return -1;
+    }
+    if (jVal.i < 0) {
+        // EOF
+        return 0;
+    } else if (jVal.i == 0) {
+        errno = EINTR;
+        return -1;
+    }
+    // We only copy the portion of the jbarray that was actually filled by
+    // the call to FsDataInputStream#read; #read is not guaranteed to fill the
+    // entire buffer, instead it returns the number of bytes read into the
+    // buffer; we use the return value as the input in GetByteArrayRegion to
+    // ensure don't copy more bytes than necessary
+    (*env)->GetByteArrayRegion(env, jbarray, 0, jVal.i, buffer);
+    if ((*env)->ExceptionCheck(env)) {
+        errno = printPendingExceptionAndFree(env, PRINT_EXC_ALL,
+                                             "hdfsRead: GetByteArrayRegion");
+        return -1;
+    }
+    return jVal.i;
+}
+
 tSize hdfsRead(hdfsFS fs, hdfsFile f, void* buffer, tSize length)
 {
     jobject jInputStream;
