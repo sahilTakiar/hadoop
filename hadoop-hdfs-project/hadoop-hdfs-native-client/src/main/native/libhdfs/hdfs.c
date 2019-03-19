@@ -1416,7 +1416,7 @@ tSize hdfsReadWithArray(hdfsFS fs, hdfsFile f, void* buffer,
         return -1;
     }
 
-    jthr = invokeMethod(env, &jVal, INSTANCE, jInputStream, HADOOP_ISTRM,
+    jthr = invokeMethod(env, &jVal, INSTANCE, jInputStream, JC_FS_DATA_INPUT_STREAM,
                         "read", "([B)I", jbarray);
     if (jthr) {
         errno = printExceptionAndFree(env, jthr, PRINT_EXC_ALL,

@@ -127,7 +127,6 @@ jthrowable classNameOfObject(jobject jobj, JNIEnv *env, char **name);
  * @param: None.
  * @return The JNIEnv* corresponding to the thread.
  * */
-LIBHDFS_EXTERNAL
 JNIEnv* getJNIEnv(void);
 
 /**
