@@ -69,7 +69,7 @@ public class ChangeTracker {
    * Revision identifier (e.g. eTag or versionId, depending on change
    * detection policy).
    */
-  private String revisionId;
+  private volatile String revisionId;
 
   /**
    * Create a change tracker.
