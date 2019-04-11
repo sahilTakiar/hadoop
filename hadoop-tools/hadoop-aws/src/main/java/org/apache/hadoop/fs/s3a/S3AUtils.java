@@ -18,12 +18,7 @@
 
 package org.apache.hadoop.fs.s3a;
 
-import com.amazonaws.AbortedException;
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.ClientConfiguration;
-import com.amazonaws.Protocol;
-import com.amazonaws.SdkBaseException;
+import com.amazonaws.*;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.retry.RetryUtils;
@@ -34,35 +29,28 @@ import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.MultiObjectDeleteException;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
-
+import com.amazonaws.thirdparty.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-
+import com.google.common.collect.Lists;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocatedFileStatus;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.PathFilter;
-import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.s3a.auth.IAMInstanceCredentialsProvider;
 import org.apache.hadoop.fs.s3native.S3xLoginHelper;
 import org.apache.hadoop.net.ConnectTimeoutException;
 import org.apache.hadoop.security.ProviderUtils;
 import org.apache.hadoop.util.VersionInfo;
-
-import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.wildfly.openssl.OpenSSLProvider;
 
 import javax.annotation.Nullable;
-import java.io.Closeable;
-import java.io.EOFException;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InterruptedIOException;
+import javax.net.ssl.SSLContext;
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -70,16 +58,9 @@ import java.lang.reflect.Modifier;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.nio.file.AccessDeniedException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 import static org.apache.commons.lang3.StringUtils.isEmpty;
@@ -1237,6 +1218,10 @@ public final class S3AUtils {
     return awsConf;
   }
 
+  static {
+    OpenSSLProvider.register();
+  }
+
   /**
    * Initializes all AWS SDK settings related to connection management.
    *
@@ -1265,6 +1250,26 @@ public final class S3AUtils {
     if (!signerOverride.isEmpty()) {
      LOG.debug("Signer override = {}", signerOverride);
       awsConf.setSignerOverride(signerOverride);
+    }
+
+    //awsConf.setSecureRandom(new OpensslSecureRandom());
+    awsConf.getApacheHttpClientConfig().setSslSocketFactory(new SSLConnectionSocketFactory(OpenSSLContext.get()));
+  }
+
+  private static class OpenSSLContext {
+
+    private static SSLContext SSL_CONTEXT;
+
+    public static synchronized SSLContext get() {
+      try {
+        if (SSL_CONTEXT == null) {
+          SSL_CONTEXT = SSLContext.getInstance("openssl.TLS");
+          SSL_CONTEXT.init(null, null, null);
+        }
+        return SSL_CONTEXT;
+      } catch (NoSuchAlgorithmException | KeyManagementException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
