@@ -96,6 +96,7 @@ JNIEXPORT jobjectArray JNICALL
 Java_org_apache_hadoop_security_JniBasedUnixGroupsMapping_getGroupsForUser 
 (JNIEnv *env, jclass clazz, jstring jusername)
 {
+  fprintf(stderr, "entering 6.1!\n");
   const char *username = NULL;
   struct hadoop_user_info *uinfo = NULL;
   struct hadoop_group_info *ginfo = NULL;
@@ -104,22 +105,29 @@ Java_org_apache_hadoop_security_JniBasedUnixGroupsMapping_getGroupsForUser
   int pw_lock_locked = 0;
   jobjectArray jgroups = NULL, jnewgroups = NULL;
 
+  fprintf(stderr, "entering 6.2!\n");
   if (pw_lock_object != NULL) {
     if ((*env)->MonitorEnter(env, pw_lock_object) != JNI_OK) {
       goto done; // exception thrown
     }
     pw_lock_locked = 1;
   }
+  fprintf(stderr, "entering 6.3!\n");
   username = (*env)->GetStringUTFChars(env, jusername, NULL);
+  fprintf(stderr, "entering 6.4!\n");
   if (username == NULL) {
     goto done; // exception thrown
   }
+  fprintf(stderr, "entering 6.5!\n");
   uinfo = hadoop_user_info_alloc();
+  fprintf(stderr, "entering 6.6!\n");
   if (!uinfo) {
     THROW(env, "java/lang/OutOfMemoryError", NULL);
     goto done;
   }
+  fprintf(stderr, "entering 6.7!\n");
   ret = hadoop_user_info_fetch(uinfo, username);
+  fprintf(stderr, "entering 6.8!\n");
   if (ret) {
     if (ret == ENOENT) {
       jgroups = (*env)->NewObjectArray(env, 0, g_string_clazz, NULL);
@@ -129,13 +137,16 @@ Java_org_apache_hadoop_security_JniBasedUnixGroupsMapping_getGroupsForUser
     }
     goto done;
   }
-
+  fprintf(stderr, "entering 6.9!\n");
   ginfo = hadoop_group_info_alloc();
+  fprintf(stderr, "entering 6.10!\n");
   if (!ginfo) {
     THROW(env, "java/lang/OutOfMemoryError", NULL);
     goto done;
   }
+  fprintf(stderr, "entering 6.11!\n");
   ret = hadoop_user_info_getgroups(uinfo);
+  fprintf(stderr, "entering 6.12!\n");
   if (ret) {
     if (ret == ENOMEM) {
       THROW(env, "java/lang/OutOfMemoryError", NULL);
@@ -145,8 +156,10 @@ Java_org_apache_hadoop_security_JniBasedUnixGroupsMapping_getGroupsForUser
     }
     goto done;
   }
+  fprintf(stderr, "entering 6.13!\n");
   jgroups = (jobjectArray)(*env)->NewObjectArray(env, uinfo->num_gids,
                                                  g_string_clazz, NULL);
+  fprintf(stderr, "entering 6.14!\n");
   for (nvalid = 0, i = 0; i < uinfo->num_gids; i++) {
     ret = hadoop_group_info_fetch(ginfo, uinfo->gids[i]);
     if (ret) {
@@ -166,6 +179,7 @@ Java_org_apache_hadoop_security_JniBasedUnixGroupsMapping_getGroupsForUser
       (*env)->DeleteLocalRef(env, jgroupname);
     }
   }
+  fprintf(stderr, "entering 6.15!\n");
   if (nvalid != uinfo->num_gids) {
     // If some group names could not be looked up, allocate a smaller array
     // with just the entries that could be resolved.  Java has no equivalent to
@@ -185,22 +199,29 @@ Java_org_apache_hadoop_security_JniBasedUnixGroupsMapping_getGroupsForUser
     (*env)->DeleteLocalRef(env, jgroups);
     jgroups = jnewgroups;
   }
+  fprintf(stderr, "entering 6.16!\n");
 
 done:
+  fprintf(stderr, "entering 6.16.1!\n");
   if (pw_lock_locked) {
     (*env)->MonitorExit(env, pw_lock_object);
   }
+  fprintf(stderr, "entering 6.16.2!\n");
   if (username) {
     (*env)->ReleaseStringUTFChars(env, jusername, username);
   }
+  fprintf(stderr, "entering 6.16.3!\n");
   if (uinfo) {
     hadoop_user_info_free(uinfo);
   }
+  fprintf(stderr, "entering 6.16.3!\n");
   if (ginfo) {
     hadoop_group_info_free(ginfo);
   }
+  fprintf(stderr, "entering 6.16.4!\n");
   if (jgroupname) {
-    (*env)->DeleteLocalRef(env, jgroupname);
+    //(*env)->DeleteLocalRef(env, jgroupname);
   }
+  fprintf(stderr, "entering 6.17!\n");
   return jgroups;
 }

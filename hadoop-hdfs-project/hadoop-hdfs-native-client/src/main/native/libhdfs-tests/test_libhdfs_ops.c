@@ -75,6 +75,7 @@ void shutdown_and_exit(struct NativeMiniDfsCluster* cl, int exit_code) {
 }
 
 int main(int argc, char **argv) {
+    fprintf(stderr, "entering 1!\n");
     const char *writePath = "/tmp/testfile.txt";
     const char *fileContents = "Hello, World!";
     const char *readPath = "/tmp/testfile.txt";
@@ -86,6 +87,8 @@ int main(int argc, char **argv) {
     const char *tuser = "nobody";
     const char *appendPath = "/tmp/appends";
     const char *userPath = "/tmp/usertestfile.txt";
+
+fprintf(stderr, "entering 2!\n");
 
     char buffer[32], buffer2[256], rdbuffer[32];
     tSize num_written_bytes, num_read_bytes, num_pread_bytes;
@@ -106,21 +109,29 @@ int main(int argc, char **argv) {
     struct NativeMiniDfsConf conf = {
         1, /* doFormat */
     };
+fprintf(stderr, "entering 3!\n");
 
     cl = nmdCreate(&conf);
+fprintf(stderr, "entering 3.1!\n");
     EXPECT_NONNULL(cl);
+fprintf(stderr, "entering 3.2!\n");
     EXPECT_ZERO(nmdWaitClusterUp(cl));
+    fprintf(stderr, "entering 3.3!\n");
     tPort port;
     port = (tPort) nmdGetNameNodePort(cl);
+fprintf(stderr, "entering 4!\n");
 
     // Create a hdfs connection to the mini cluster
     struct hdfsBuilder *bld;
     bld = hdfsNewBuilder();
     EXPECT_NONNULL(bld);
+fprintf(stderr, "entering 5!\n");
 
     hdfsBuilderSetForceNewInstance(bld);
     hdfsBuilderSetNameNode(bld, "localhost");
     hdfsBuilderSetNameNodePort(bld, port);
+fprintf(stderr, "entering 6!\n");
+
     // The HDFS append tests require setting this property otherwise the tests fail with:
     //
     //     IOException: Failed to replace a bad datanode on the existing pipeline due to no more good datanodes being
@@ -130,8 +141,10 @@ int main(int argc, char **argv) {
     // It seems that when operating against a mini DFS cluster, some HDFS append tests require setting this property
     // (for example, see TestFileAppend#testMultipleAppends)
     hdfsBuilderConfSetStr(bld, "dfs.client.block.write.replace-datanode-on-failure.enable", "false");
+fprintf(stderr, "entering 7!\n");
 
     fs = hdfsBuilderConnect(bld);
+fprintf(stderr, "entering 8!\n");
 
     if(!fs) {
         fprintf(stderr, "Oops! Failed to connect to hdfs!\n");
@@ -143,6 +156,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Oops! Failed to connect to 'local' hdfs!\n");
         shutdown_and_exit(cl, -1);
     } 
+fprintf(stderr, "entering 10!\n");
 
     {
         // Write tests
@@ -450,8 +464,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "hdfsGetDefaultBlockSize: %" PRId64 "\n", hdfsGetDefaultBlockSize(fs));
         fprintf(stderr, "hdfsGetCapacity: %" PRId64 "\n", hdfsGetCapacity(fs));
         fprintf(stderr, "hdfsGetUsed: %" PRId64 "\n", hdfsGetUsed(fs));
+        fprintf(stderr, "done with getused\n");
 
         fileInfo = NULL;
+        fprintf(stderr, "HdfsGetPathInfo!\n");
         if((fileInfo = hdfsGetPathInfo(fs, slashTmp)) != NULL) {
             fprintf(stderr, "hdfsGetPathInfo - SUCCESS!\n");
             fprintf(stderr, "Name: %s, ", fileInfo->mName);
@@ -469,6 +485,7 @@ int main(int argc, char **argv) {
             totalResult++;
             fprintf(stderr, "waah! hdfsGetPathInfo for %s - FAILED!\n", slashTmp);
         }
+        fprintf(stderr, "hdsfGetPathInfo passed!\n");
 
         fileList = 0;
         fileList = hdfsListDirectory(fs, newDirectory, &numEntries);

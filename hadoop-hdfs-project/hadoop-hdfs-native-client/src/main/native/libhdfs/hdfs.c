@@ -3293,7 +3293,9 @@ tOffset hdfsGetUsed(hdfsFS fs)
     fss = (jobject)jVal.l;
     jthr = invokeMethod(env, &jVal, INSTANCE, fss, JC_FS_STATUS,
             HADOOP_FSSTATUS,"getUsed", "()J");
+    fprintf(stderr, "entering destroyLocaRef!\n");
     destroyLocalReference(env, fss);
+    fprintf(stderr, "done destroyLocalRef!\n");
     if (jthr) {
         errno = printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
             "hdfsGetUsed: FsStatus#getUsed");
@@ -3475,12 +3477,19 @@ getFileInfoFromStat(JNIEnv *env, jobject jStat, hdfsFileInfo *fileInfo)
 done:
     if (jthr)
         hdfsFreeFileInfoEntry(fileInfo);
+    fprintf(stderr, "getFileInfoFromStat before destroy!\n");
     destroyLocalReference(env, jPath);
+    fprintf(stderr, "getFileInfoFromStat before destroy 1!\n");
     destroyLocalReference(env, jPathName);
+    fprintf(stderr, "getFileInfoFromStat before destroy 2!\n");
     destroyLocalReference(env, jUserName);
+    fprintf(stderr, "getFileInfoFromStat before destroy 3!\n");
     destroyLocalReference(env, jGroupName);
+    fprintf(stderr, "getFileInfoFromStat before destroy 4!\n");
     destroyLocalReference(env, jPermission);
-    destroyLocalReference(env, jPath);
+    fprintf(stderr, "getFileInfoFromStat before destroy5 !\n");
+    //destroyLocalReference(env, jPath);
+    fprintf(stderr, "getFileInfoFromStat after destroy!\n");
     return jthr;
 }
 
@@ -3500,6 +3509,7 @@ getFileInfo(JNIEnv *env, jobject jFS, jobject jPath, hdfsFileInfo **fileInfo)
     jvalue  jVal;
     jthrowable jthr;
 
+    fprintf(stderr, "getFileInfo 1!\n");
     jthr = invokeMethod(env, &jVal, INSTANCE, jFS, JC_FILE_SYSTEM, "exists",
             JMETHOD1(JPARAM(HADOOP_PATH), "Z"), jPath);
     if (jthr)
@@ -3508,6 +3518,7 @@ getFileInfo(JNIEnv *env, jobject jFS, jobject jPath, hdfsFileInfo **fileInfo)
         *fileInfo = NULL;
         return NULL;
     }
+    fprintf(stderr, "getFileInfo 2!\n");
     jthr = invokeMethod(env, &jVal, INSTANCE, jFS, JC_FILE_SYSTEM,
             "getFileStatus", JMETHOD1(JPARAM(HADOOP_PATH), JPARAM
             (HADOOP_FILESTAT)), jPath);
@@ -3515,12 +3526,18 @@ getFileInfo(JNIEnv *env, jobject jFS, jobject jPath, hdfsFileInfo **fileInfo)
         return jthr;
     jStat = jVal.l;
     *fileInfo = calloc(1, sizeof(hdfsFileInfo));
+    fprintf(stderr, "getFileInfo 2!\n");
     if (!*fileInfo) {
+        fprintf(stderr, "getFileInfo 3!\n");
         destroyLocalReference(env, jStat);
+        fprintf(stderr, "getFileInfo 4!\n");
         return newRuntimeError(env, "getFileInfo: OOM allocating hdfsFileInfo");
     }
+    fprintf(stderr, "getFileInfo 5!\n");
     jthr = getFileInfoFromStat(env, jStat, *fileInfo); 
+    fprintf(stderr, "getFileInfo 6!\n");
     destroyLocalReference(env, jStat);
+    fprintf(stderr, "getFileInfo 7!\n");
     return jthr;
 }
 
@@ -3645,14 +3662,20 @@ hdfsFileInfo *hdfsGetPathInfo(hdfsFS fs, const char *path)
     }
 
     //Create an object of org.apache.hadoop.fs.Path
+    fprintf(stderr, "hdfsGetPathInfo 1!\n");
     jthr = constructNewObjectOfPath(env, path, &jPath);
+    fprintf(stderr, "hdfsGetPathInfo 2!\n");
     if (jthr) {
         errno = printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
             "hdfsGetPathInfo(%s): constructNewObjectOfPath", path);
         return NULL;
     }
+    fprintf(stderr, "hdfsGetPathInfo 3!\n");
     jthr = getFileInfo(env, jFS, jPath, &fileInfo);
+    fprintf(stderr, "hdfsGetPathInfo 4!\n");
+    fprintf(stderr, "about to destroy local ref!\n");
     destroyLocalReference(env, jPath);
+    fprintf(stderr, "destroyed local ref\n");
     if (jthr) {
         errno = printExceptionAndFree(env, jthr,
             NOPRINT_EXC_ACCESS_CONTROL | NOPRINT_EXC_FILE_NOT_FOUND |
@@ -3664,6 +3687,7 @@ hdfsFileInfo *hdfsGetPathInfo(hdfsFS fs, const char *path)
         errno = ENOENT;
         return NULL;
     }
+    fprintf(stderr, "hdfsGetPathInfo 5!\n");
     return fileInfo;
 }
 

@@ -105,7 +105,9 @@ struct NativeMiniDfsCluster* nmdCreate(struct NativeMiniDfsConf *conf)
     struct NativeMiniDfsCluster* cl = NULL;
     jobject bld = NULL, cobj = NULL, cluster = NULL;
     jvalue  val;
+    fprintf(stderr, "entering 3.5!\n");
     JNIEnv *env = getJNIEnv();
+    fprintf(stderr, "entering 3.6!\n");
     jthrowable jthr;
     jstring jconfStr = NULL;
 
@@ -113,42 +115,53 @@ struct NativeMiniDfsCluster* nmdCreate(struct NativeMiniDfsConf *conf)
         fprintf(stderr, "nmdCreate: unable to construct JNIEnv.\n");
         return NULL;
     }
+    fprintf(stderr, "entering 3.7!\n");
     cl = calloc(1, sizeof(struct NativeMiniDfsCluster));
     if (!cl) {
         fprintf(stderr, "nmdCreate: OOM");
         goto error;
     }
+    fprintf(stderr, "entering 3.8!\n");
     jthr = constructNewObjectOfClass(env, &cobj, HADOOP_CONF, "()V");
+    fprintf(stderr, "entering 3.9!\n");
     if (jthr) {
         printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
             "nmdCreate: new Configuration");
         goto error;
     }
     // Disable 'minimum block size' -- it's annoying in tests.
+    fprintf(stderr, "entering 3.10!\n");
     (*env)->DeleteLocalRef(env, jconfStr);
+    fprintf(stderr, "entering 3.11!\n");
     jconfStr = NULL;
     jthr = newJavaStr(env, "dfs.namenode.fs-limits.min-block-size", &jconfStr);
+    fprintf(stderr, "entering 3.12!\n");
     if (jthr) {
         printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
                               "nmdCreate: new String");
         goto error;
     }
+    fprintf(stderr, "entering 3.13!\n");
     jthr = invokeMethod(env, NULL, INSTANCE, cobj,
             JC_CONFIGURATION, "setLong", "(Ljava/lang/String;J)V", jconfStr,
             0LL);
+    fprintf(stderr, "entering 3.14!\n");
     if (jthr) {
         printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
                               "nmdCreate: Configuration::setLong");
         goto error;
     }
     // Creae MiniDFSCluster object
+    fprintf(stderr, "entering 3.15!\n");
     jthr = constructNewObjectOfClass(env, &bld, MINIDFS_CLUSTER_BUILDER,
                     "(L"HADOOP_CONF";)V", cobj);
+    fprintf(stderr, "entering 3.16!\n");
     if (jthr) {
         printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
             "nmdCreate: NativeMiniDfsCluster#Builder#Builder");
         goto error;
     }
+    fprintf(stderr, "entering 3.17!\n");
     if (conf->configureShortCircuit) {
         jthr = nmdConfigureShortCircuit(env, cl, cobj);
         if (jthr) {
@@ -157,18 +170,23 @@ struct NativeMiniDfsCluster* nmdCreate(struct NativeMiniDfsConf *conf)
             goto error;
         }
     }
+    fprintf(stderr, "entering 3.18!\n");
     jthr = findClassAndInvokeMethod(env, &val, INSTANCE, bld, MINIDFS_CLUSTER_BUILDER,
             "format", "(Z)L" MINIDFS_CLUSTER_BUILDER ";", conf->doFormat);
+    fprintf(stderr, "entering 3.19!\n");
     if (jthr) {
         printExceptionAndFree(env, jthr, PRINT_EXC_ALL, "nmdCreate: "
                               "Builder::format");
         goto error;
     }
+    fprintf(stderr, "entering 3.20!\n");
     (*env)->DeleteLocalRef(env, val.l);
     if (conf->webhdfsEnabled) {
+      fprintf(stderr, "entering 3.20-1!\n");
         jthr = findClassAndInvokeMethod(env, &val, INSTANCE, bld, MINIDFS_CLUSTER_BUILDER,
                         "nameNodeHttpPort", "(I)L" MINIDFS_CLUSTER_BUILDER ";",
                         conf->namenodeHttpPort);
+        fprintf(stderr, "entering 3.20-2!\n");
         if (jthr) {
             printExceptionAndFree(env, jthr, PRINT_EXC_ALL, "nmdCreate: "
                                   "Builder::nameNodeHttpPort");
@@ -177,22 +195,28 @@ struct NativeMiniDfsCluster* nmdCreate(struct NativeMiniDfsConf *conf)
         (*env)->DeleteLocalRef(env, val.l);
     }
     if (conf->numDataNodes) {
+      fprintf(stderr, "entering 3.20-3!\n");
         jthr = findClassAndInvokeMethod(env, &val, INSTANCE, bld, MINIDFS_CLUSTER_BUILDER,
                 "numDataNodes", "(I)L" MINIDFS_CLUSTER_BUILDER ";", conf->numDataNodes);
+        fprintf(stderr, "entering 3.20-4!\n");
         if (jthr) {
             printExceptionAndFree(env, jthr, PRINT_EXC_ALL, "nmdCreate: "
                                   "Builder::numDataNodes");
             goto error;
         }
+        (*env)->DeleteLocalRef(env, val.l);
     }
-    (*env)->DeleteLocalRef(env, val.l);
+    fprintf(stderr, "entering 3.20-5!\n");
+    fprintf(stderr, "entering 3.20.1!\n");
     jthr = findClassAndInvokeMethod(env, &val, INSTANCE, bld, MINIDFS_CLUSTER_BUILDER,
             "build", "()L" MINIDFS_CLUSTER ";");
+    fprintf(stderr, "entering 3.20.2!\n");
     if (jthr) {
         printExceptionAndFree(env, jthr, PRINT_EXC_ALL,
                               "nmdCreate: Builder#build");
         goto error;
     }
+    fprintf(stderr, "entering 3.21!\n");
     cluster = val.l;
 	  cl->obj = (*env)->NewGlobalRef(env, val.l);
     if (!cl->obj) {
@@ -200,6 +224,7 @@ struct NativeMiniDfsCluster* nmdCreate(struct NativeMiniDfsConf *conf)
             "nmdCreate: NewGlobalRef");
         goto error;
     }
+    fprintf(stderr, "entering 3.22!\n");
     (*env)->DeleteLocalRef(env, cluster);
     (*env)->DeleteLocalRef(env, bld);
     (*env)->DeleteLocalRef(env, cobj);
